@@ -1,3 +1,14 @@
+"""
+AI 逆转裁判 (AI Ace Attorney)
+基于大语言模型的《逆转裁判》风格法庭模拟系统
+
+所有角色（律师、检察官、法官、证人）都由 AI 自动扮演
+模拟真实的法庭辩论过程，寻找证人证词中的矛盾
+
+作者: yuanxiaoaihezhou
+版本: 1.0
+"""
+
 import requests
 import json
 import time
