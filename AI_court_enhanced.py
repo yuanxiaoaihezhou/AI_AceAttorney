@@ -1,12 +1,6 @@
 """
-AI 逆转裁判 (AI Ace Attorney)
-基于大语言模型的《逆转裁判》风格法庭模拟系统
-
-所有角色（律师、检察官、法官、证人）都由 AI 自动扮演
-模拟真实的法庭辩论过程，寻找证人证词中的矛盾
-
-作者: yuanxiaoaihezhou
-版本: 1.0
+AI 逆转裁判 - 增强版
+包含庭审前调查阶段、更多角色、地点探索等功能
 """
 
 import requests
@@ -176,6 +170,7 @@ class CaseDesigner:
         2. 证人的"初始证词"必须包含一个明显的谎言，这个谎言与"证物列表"中的某一项直接矛盾（例如时间、地点、物品状态）。
         3. 请确保真凶的名字和死者的名字不要搞混。
         4. 案件应该有足够的深度和复杂性，包含多个证物和线索。
+        5. 需要设计可供调查的地点和NPC。
 
         请以严格的 JSON 格式输出：
         {
@@ -187,14 +182,17 @@ class CaseDesigner:
             "crime_scene": "案发地点详细描述",
             "time_of_crime": "案发时间",
             "evidence_list": [
-                {"name": "证物名", "description": "证物详细描述（这是律师破案的关键，请写具体点，例如'上面印着xx时间'）"}
+                {"name": "证物名", "description": "证物详细描述", "location": "在哪里可以找到"}
             ],
             "locations": [
-                {"name": "地点名", "description": "地点描述", "clues": ["可在此发现的线索"]}
+                {"name": "地点名", "description": "地点描述", "available_items": ["可调查的物品"]}
+            ],
+            "npcs": [
+                {"name": "NPC名字", "role": "角色", "location": "所在地点", "knows": "掌握的信息"}
             ],
             "witness": {
                 "name": "真凶名字",
-                "personality": "性格（如：傲慢、胆小、阴险）",
+                "personality": "性格",
                 "secret": "作案手法简述",
                 "initial_testimony": "一段简短的证词（必须包含一个能被证物直接反驳的谎言）",
                 "motive": "作案动机"
@@ -237,21 +235,65 @@ class CaseDesigner:
             return self.generate_case()
 
 
-# --- 角色代理 (优化 Prompt) ---
+# --- 调查阶段管理器 ---
+class InvestigationPhase:
+    """庭审前调查阶段"""
+    
+    def __init__(self, case_data: Dict[str, Any]):
+        self.case_data = case_data
+        self.collected_evidence = []
+        self.interviewed_npcs = []
+        
+    def start(self):
+        """开始调查阶段"""
+        print(f"\n{Fore.YELLOW}=== 调查阶段 ===")
+        print(f"{Fore.WHITE}案件发生后，作为辩护律师，你需要收集证据和线索。")
+        print(f"{Fore.WHITE}被告 {self.case_data.get('suspect', '未知')} 被指控犯罪。")
+        print(f"{Fore.WHITE}背景: {self.case_data.get('background', '未知')}")
+        
+        # 显示可调查的地点
+        locations = self.case_data.get('locations', [])
+        if locations:
+            print(f"\n{Fore.CYAN}可调查的地点:")
+            for i, loc in enumerate(locations, 1):
+                print(f"{i}. {loc['name']} - {loc.get('description', '无描述')}")
+        
+        # 显示可询问的 NPC
+        npcs = self.case_data.get('npcs', [])
+        if npcs:
+            print(f"\n{Fore.CYAN}可询问的人物:")
+            for i, npc in enumerate(npcs, 1):
+                print(f"{i}. {npc['name']} ({npc.get('role', '未知')}) - 在 {npc.get('location', '某处')}")
+        
+        print(f"\n{Fore.GREEN}提示: 调查阶段已简化，将自动收集所有证物。")
+        print(f"{Fore.GREEN}按回车键开始庭审...")
+        input()
+        
+        # 自动收集所有证物（简化版）
+        self.collected_evidence = self.case_data.get('evidence_list', [])
+        print(f"{Fore.GREEN}已收集 {len(self.collected_evidence)} 件证物！")
 
+
+# --- 角色代理基类 ---
 class AIAgent:
+    """AI 角色代理基类"""
+    
     def __init__(self, name: str, role_prompt: str):
         self.name = name
         self.history = [{"role": "system", "content": role_prompt}]
 
     def speak(self, context_msg: str) -> str:
+        """让角色说话"""
         self.history.append({"role": "user", "content": context_msg})
         response = LLMClient.chat(self.history)
         self.history.append({"role": "assistant", "content": response})
         return response
 
 
+# --- 具体角色类 ---
 class Judge(AIAgent):
+    """法官"""
+    
     def __init__(self):
         super().__init__("法官", """
         你是由AI扮演的《逆转裁判》法官。
@@ -266,10 +308,12 @@ class Judge(AIAgent):
 
 
 class Prosecutor(AIAgent):
+    """检察官"""
+    
     def __init__(self, evidence_list):
         evidence_str = "\n".join([f"- {e['name']}: {e['description']}" for e in evidence_list])
         super().__init__("检察官", f"""
-        你是亚内检察官风格的AI。你的目标是认定嫌疑人有罪。
+        你是御剑怜侍检察官风格的AI。你的目标是认定嫌疑人有罪。
         你持有的证物信息：
         {evidence_str}
 
@@ -282,6 +326,8 @@ class Prosecutor(AIAgent):
 
 
 class DefenseAttorney(AIAgent):
+    """辩护律师"""
+    
     def __init__(self, evidence_list):
         self.evidence = evidence_list
         evidence_str = "\n".join([f"- {e['name']}: {e['description']}" for e in self.evidence])
@@ -300,6 +346,8 @@ class DefenseAttorney(AIAgent):
 
 
 class Witness(AIAgent):
+    """证人（通常是真凶）"""
+    
     def __init__(self, name, profile, secret, initial_testimony):
         super().__init__(f"证人({name})", f"""
         你扮演法庭证人 {name}，同时你也是真凶。
@@ -315,12 +363,33 @@ class Witness(AIAgent):
         self.initial_testimony = initial_testimony
 
 
-# --- 庭审模拟器 (优化流程控制) ---
+class Detective(AIAgent):
+    """警探（可选角色）"""
+    
+    def __init__(self, case_info: str):
+        super().__init__("警探", f"""
+        你是糸锋千寻风格的警探。你负责案件的初步调查。
+        
+        案件信息：
+        {case_info}
+        
+        你的性格：
+        - 认真负责，但有时过于刻板
+        - 相信科学证据
+        - 会协助律师，但不会越界
+        """)
+
+
+# --- 庭审模拟器 ---
 class CourtSimulation:
+    """法庭模拟系统"""
+    
     def __init__(self):
         self.designer = CaseDesigner()
 
     def run(self):
+        """运行完整的法庭模拟"""
+        # 1. 生成案件
         case = self.designer.generate_case()
 
         print(f"\n{Fore.YELLOW}=== 案件信息 ===")
@@ -331,18 +400,25 @@ class CourtSimulation:
         
         if DEBUG_MODE:
             print(f"真凶: {case['true_killer']}")
-        
-        print(f"\n{Fore.CYAN}证物清单:")
-        for i, evidence in enumerate(case['evidence_list'], 1):
-            print(f"    {i}. {evidence['name']}: {evidence['description']}")
+            print(f"证物: {[e['name'] for e in case['evidence_list']]}")
         
         print(f"{Fore.YELLOW}=================\n")
 
-        input("按回车键开始庭审...")
+        # 2. 调查阶段（简化版）
+        investigation = InvestigationPhase(case)
+        investigation.start()
 
+        # 3. 庭审阶段
+        self.run_trial(case, investigation.collected_evidence)
+
+    def run_trial(self, case: Dict[str, Any], evidence_list: List[Dict[str, str]]):
+        """运行庭审流程"""
+        print(f"\n{Fore.WHITE}--- 开庭 ---")
+        
+        # 初始化角色
         judge = Judge()
-        prosecutor = Prosecutor(case['evidence_list'])
-        lawyer = DefenseAttorney(case['evidence_list'])
+        prosecutor = Prosecutor(evidence_list)
+        lawyer = DefenseAttorney(evidence_list)
         witness = Witness(
             case['witness']['name'],
             case['witness']['personality'],
@@ -350,7 +426,6 @@ class CourtSimulation:
             case['witness']['initial_testimony']
         )
 
-        print(f"\n{Fore.WHITE}--- 开庭 ---")
         print(f"{Fore.RED}法官:{Style.RESET_ALL} 开庭。证人 {case['witness']['name']}，请入庭并作证。")
 
         current_context = f"证人发言：{case['witness']['initial_testimony']}"
@@ -379,12 +454,11 @@ class CourtSimulation:
             pros_response = prosecutor.speak(pros_msg)
             print(f"{Fore.RED}检察官:{Style.RESET_ALL} {pros_response}")
 
-            # 3. 证人反应 (增加逻辑判断)
+            # 3. 证人反应
             if action_type == "指证":
                 witness_breakdown_count += 1
                 wit_msg = f"律师拿出了证据 {presented_evidence} 指出了你的矛盾！检察官虽然帮你说话，但这个证据很强。请试图狡辩，或者编造一个新的理由！(这是你第{witness_breakdown_count}次被拆穿)"
 
-                # 如果被连续指证达到阈值，强制崩溃
                 if witness_breakdown_count >= WITNESS_BREAKDOWN_THRESHOLD:
                     wit_msg += " 你的逻辑已经无法自圆其说了，请表现出彻底崩溃！"
             else:
@@ -393,11 +467,9 @@ class CourtSimulation:
             witness_response = witness.speak(wit_msg)
             print(f"{Fore.CYAN}证人:{Style.RESET_ALL} {witness_response}")
 
-            # 更新下一轮的上下文（只保留证人最新的话，让律师针对这句话攻击）
             current_context = witness_response
 
             # 4. 法官裁决
-            # 只有当律师指证成功，且证人表现出明显崩溃词汇时，法官才判决
             judge_context = f"本回合总结：律师指出矛盾。证人回答：{witness_response}"
             if witness_breakdown_count >= WITNESS_BREAKDOWN_THRESHOLD or ("我承认" in witness_response or "是我做的" in witness_response):
                 judge_msg = f"{judge_context}。证人似乎已经承认或彻底崩溃了。请做出最后判决。"
@@ -419,7 +491,7 @@ class CourtSimulation:
 
 if __name__ == "__main__":
     print(f"{Fore.CYAN}{'='*50}")
-    print(f"{Fore.CYAN}AI 逆转裁判 (AI Ace Attorney)")
+    print(f"{Fore.CYAN}AI 逆转裁判 - 增强版")
     print(f"{Fore.CYAN}{'='*50}\n")
     
     if LLMClient.test_connection():
