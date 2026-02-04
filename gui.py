@@ -214,7 +214,9 @@ class AIAceAttorneyGUI:
         self.output_text.configure(state='normal')
         self.output_text.delete('1.0', 'end')
         self.output_text.configure(state='disabled')
-        print("输出已清空")
+        self.status_label.configure(text="输出已清空")
+        # 2秒后恢复状态为"就绪"
+        self.window.after(2000, lambda: self.status_label.configure(text="就绪"))
     
     def _exit_app(self):
         """退出应用"""

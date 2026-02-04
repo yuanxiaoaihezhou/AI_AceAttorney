@@ -38,8 +38,9 @@ class DemoTeeOutput:
         self.console.flush()
         
         # 2. 写入 GUI（移除颜色代码）
+        # 保留所有内容包括空白字符以保持格式
         clean_text = self.ansi_escape.sub('', text)
-        if clean_text.strip():  # 只记录非空内容
+        if clean_text.strip():  # 跳过纯空白行以保持简洁
             self.mock_gui.append(clean_text)
     
     def flush(self):
