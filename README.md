@@ -53,9 +53,19 @@ SILICONFLOW_API_KEY = "sk-your-api-key"  # 填入你的 API Key
 
 ## 运行
 
+**基础版本**（推荐新手使用）:
 ```bash
 python AI_court.py
 ```
+
+**增强版本**（包含调查阶段和更多功能）:
+```bash
+python AI_court_enhanced.py
+```
+
+两个版本的区别：
+- `AI_court.py`: 基础版，直接进入庭审阶段
+- `AI_court_enhanced.py`: 增强版，包含调查阶段、更多 NPC、地点探索等功能
 
 ## 配置说明
 
