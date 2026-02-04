@@ -8,7 +8,7 @@ AI 逆转裁判 - 配置文件
 LLM_PROVIDER = "ollama"
 
 # --- SiliconFlow (硅基流动) 配置 ---
-SILICONFLOW_API_KEY = "sk-xxxx"  # 请填入你的 SiliconFlow API Key
+SILICONFLOW_API_KEY = "your-api-key-here"  # 请填入你的 SiliconFlow API Key
 SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
 SILICONFLOW_MODEL_NAME = "deepseek-ai/DeepSeek-V3"
 

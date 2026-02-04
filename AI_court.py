@@ -47,8 +47,9 @@ class LLMClient:
         elif LLM_PROVIDER == "ollama":
             return LLMClient._chat_ollama(messages, json_mode)
         else:
-            print(f"{Fore.RED}不支持的 LLM 提供商: {LLM_PROVIDER}")
-            return ""
+            error_msg = f"不支持的 LLM 提供商: {LLM_PROVIDER}。支持的提供商: 'siliconflow', 'ollama'"
+            print(f"{Fore.RED}{error_msg}")
+            raise ValueError(error_msg)
 
     @staticmethod
     def _chat_siliconflow(messages: List[Dict[str, str]], json_mode=False) -> str:
@@ -92,9 +93,12 @@ class LLMClient:
     @staticmethod
     def _chat_ollama(messages: List[Dict[str, str]], json_mode=False) -> str:
         """Ollama 本地 API 调用"""
+        # 创建消息列表的副本，避免修改原始列表
+        messages_copy = messages.copy()
+        
         payload = {
             "model": OLLAMA_MODEL_NAME,
-            "messages": messages,
+            "messages": messages_copy,
             "stream": False,
             "options": {
                 "temperature": JSON_TEMPERATURE if json_mode else DEFAULT_TEMPERATURE,
@@ -105,10 +109,10 @@ class LLMClient:
         if json_mode:
             # Ollama 对 JSON 模式的支持
             system_msg = "请以严格的 JSON 格式回复，不要包含任何其他文本。"
-            if messages and messages[0]["role"] == "system":
-                messages[0]["content"] += "\n" + system_msg
+            if messages_copy and messages_copy[0]["role"] == "system":
+                messages_copy[0]["content"] += "\n" + system_msg
             else:
-                messages.insert(0, {"role": "system", "content": system_msg})
+                messages_copy.insert(0, {"role": "system", "content": system_msg})
 
         try:
             if SHOW_API_LOGS:
@@ -200,7 +204,14 @@ class CaseDesigner:
         """
 
         response = LLMClient.chat([{"role": "user", "content": prompt}], json_mode=True)
+        
+        # 清理响应，移除可能的 markdown 标记（有些模型可能不遵守指令）
         clean_response = response.replace("```json", "").replace("```", "").strip()
+        
+        # 验证响应是否为有效的 JSON
+        if not clean_response:
+            print(f"{Fore.RED}收到空响应，重试中...")
+            return self.generate_case()
 
         try:
             case_data = json.loads(clean_response)
@@ -323,7 +334,7 @@ class CourtSimulation:
         
         print(f"\n{Fore.CYAN}证物清单:")
         for i, evidence in enumerate(case['evidence_list'], 1):
-            print(f"  {i}. {evidence['name']}: {evidence['description']}")
+            print(f"    {i}. {evidence['name']}: {evidence['description']}")
         
         print(f"{Fore.YELLOW}=================\n")
 
