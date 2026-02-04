@@ -104,7 +104,7 @@ OLLAMA_MODEL_NAME = "qwen2:7b"  # 或其他支持的模型
 ```
 
 安装 Ollama:
-1. 访问 https://ollama.ai 下载并安装
+1. 访问 [https://ollama.ai](https://ollama.ai) 下载并安装
 2. 下载模型: `ollama pull qwen2:7b`
 3. 启动服务: `ollama serve`
 

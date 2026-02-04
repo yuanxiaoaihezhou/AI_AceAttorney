@@ -60,7 +60,7 @@ class CaseDesigner:
                 "motive": "作案动机"
             }
         }
-        直接输出JSON，不要markdown标记。
+        直接输出JSON, 不要markdown标记。
         """
 
         response = LLMClient.chat([{"role": "user", "content": prompt}], json_mode=True)
