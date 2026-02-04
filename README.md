@@ -18,7 +18,8 @@
 
 ```
 AI_AceAttorney/
-├── main.py                 # 程序入口，启动法庭模拟
+├── main.py                 # 程序入口，支持GUI和控制台模式
+├── gui.py                  # GUI 界面模块（使用 CustomTkinter）
 ├── llm_client.py          # LLM 客户端，统一的大语言模型接口
 ├── case_designer.py       # 案件设计者，生成案件剧情和证物
 ├── agents.py              # AI 角色定义（法官、律师、检察官、证人等）
@@ -35,8 +36,15 @@ AI_AceAttorney/
 
 #### `main.py` - 程序入口
 - 程序的主入口点
+- 支持 GUI 和控制台两种运行模式
 - 初始化系统并启动法庭模拟
 - 测试 LLM 连接
+
+#### `gui.py` - GUI 界面
+- 使用 CustomTkinter 实现的现代化图形界面
+- 提供实时庭审过程显示
+- 支持输出重定向，同时保留控制台输出
+- 提供便捷的控制按钮（开始庭审、清空输出、退出）
 
 #### `llm_client.py` - LLM 客户端
 - 提供统一的大语言模型调用接口
@@ -116,9 +124,36 @@ SILICONFLOW_API_KEY = "sk-your-api-key"  # 填入你的 API Key
 
 ## 运行
 
-启动程序：
+本项目支持两种运行模式：
+
+### GUI 模式（推荐）
+启动图形界面：
 ```bash
 python main.py
+# 或
+python main.py --gui
+```
+
+GUI 模式特点：
+- 使用 CustomTkinter 实现的现代化图形界面
+- 实时显示庭审过程
+- 同时保留控制台输出以便调试
+- 提供清空输出、开始庭审等便捷按钮
+
+### 控制台模式
+使用传统控制台界面：
+```bash
+python main.py --console
+```
+
+控制台模式特点：
+- 纯文本界面，适合远程服务器或无图形环境
+- 彩色输出，增强可读性
+- 资源占用更少
+
+### 查看帮助
+```bash
+python main.py --help
 ```
 
 ## 游戏流程
@@ -214,6 +249,7 @@ AI 自动创建案件，包括：
 ## 技术栈
 
 - **Python 3.7+**: 主要编程语言
+- **CustomTkinter**: 现代化的图形界面库
 - **requests**: HTTP 请求库，用于 API 调用
 - **colorama**: 终端彩色输出，增强用户体验
 - **Ollama / SiliconFlow**: 大语言模型服务
@@ -266,6 +302,25 @@ class NewRole(AIAgent):
 # Ollama
 ollama pull qwen2.5:14b
 # 然后在 config.py 中修改 OLLAMA_MODEL_NAME
+```
+
+### Q: GUI 无法启动怎么办？
+- 确保已安装依赖: `pip install -r requirements.txt`
+- 如果缺少 tkinter，在 Linux 上运行: `sudo apt-get install python3-tk`
+- 在 macOS 上，tkinter 通常随 Python 自带
+- 可以使用控制台模式作为替代: `python main.py --console`
+
+### Q: 如何在 GUI 和控制台之间切换？
+```bash
+# 使用 GUI 模式（默认）
+python main.py
+python main.py --gui
+
+# 使用控制台模式
+python main.py --console
+
+# 查看帮助
+python main.py --help
 ```
 
 ## 未来计划
