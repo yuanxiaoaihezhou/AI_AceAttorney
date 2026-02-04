@@ -5,70 +5,153 @@ import re
 from typing import List, Dict, Any, Optional
 from colorama import Fore, Style, init
 
+# 导入配置文件
+from config import (
+    LLM_PROVIDER,
+    SILICONFLOW_API_KEY,
+    SILICONFLOW_API_URL,
+    SILICONFLOW_MODEL_NAME,
+    OLLAMA_API_URL,
+    OLLAMA_MODEL_NAME,
+    MAX_ROUNDS,
+    WITNESS_BREAKDOWN_THRESHOLD,
+    DEFAULT_TEMPERATURE,
+    JSON_TEMPERATURE,
+    MAX_TOKENS,
+    DEBUG_MODE,
+    SHOW_API_LOGS
+)
+
 # 初始化颜色输出
 init(autoreset=True)
 
-# --- 配置部分 ---
-LLM_PROVIDER = "siliconflow"
 
-# SiliconFlow (硅基流动) 配置
-SILICONFLOW_API_KEY = "sk-xxxx"  # 请确保填入你的 Key
-SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
-SILICONFLOW_MODEL_NAME = "deepseek-ai/DeepSeek-V3"
-
-MAX_ROUNDS = 10  # 限制最大回合数，防止死循环
-
-
-# --- 工具类：通用 LLM 接口 (保持不变) ---
+# --- 工具类：通用 LLM 接口 ---
 class LLMClient:
     @staticmethod
     def chat(messages: List[Dict[str, str]], json_mode=False) -> str:
+        """统一的 LLM 调用接口，支持多种提供商"""
+        if LLM_PROVIDER == "siliconflow":
+            return LLMClient._chat_siliconflow(messages, json_mode)
+        elif LLM_PROVIDER == "ollama":
+            return LLMClient._chat_ollama(messages, json_mode)
+        else:
+            print(f"{Fore.RED}不支持的 LLM 提供商: {LLM_PROVIDER}")
+            return ""
+
+    @staticmethod
+    def _chat_siliconflow(messages: List[Dict[str, str]], json_mode=False) -> str:
+        """SiliconFlow API 调用"""
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {SILICONFLOW_API_KEY}"
         }
 
-        # 针对角色扮演优化了 temperature
         payload = {
             "model": SILICONFLOW_MODEL_NAME,
             "messages": messages,
             "stream": False,
-            "temperature": 1.0,  # 稍微提高创造性
-            "max_tokens": 1024
+            "temperature": JSON_TEMPERATURE if json_mode else DEFAULT_TEMPERATURE,
+            "max_tokens": MAX_TOKENS
         }
 
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
-            payload["temperature"] = 0.7  # 生成 JSON 时降低随机性
 
         try:
-            response = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload)
+            if SHOW_API_LOGS:
+                print(f"{Fore.CYAN}[API] 请求 SiliconFlow...")
+            
+            response = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=60)
+            
             if response.status_code != 200:
                 print(f"{Fore.RED}API Error ({response.status_code}): {response.text}")
                 return ""
-            response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
+            
+            result = response.json()['choices'][0]['message']['content']
+            
+            if SHOW_API_LOGS:
+                print(f"{Fore.GREEN}[API] 响应成功")
+            
+            return result
         except Exception as e:
-            print(f"{Fore.RED}LLM调用异常: {e}")
+            print(f"{Fore.RED}SiliconFlow 调用异常: {e}")
+            return ""
+
+    @staticmethod
+    def _chat_ollama(messages: List[Dict[str, str]], json_mode=False) -> str:
+        """Ollama 本地 API 调用"""
+        payload = {
+            "model": OLLAMA_MODEL_NAME,
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": JSON_TEMPERATURE if json_mode else DEFAULT_TEMPERATURE,
+                "num_predict": MAX_TOKENS
+            }
+        }
+
+        if json_mode:
+            # Ollama 对 JSON 模式的支持
+            system_msg = "请以严格的 JSON 格式回复，不要包含任何其他文本。"
+            if messages and messages[0]["role"] == "system":
+                messages[0]["content"] += "\n" + system_msg
+            else:
+                messages.insert(0, {"role": "system", "content": system_msg})
+
+        try:
+            if SHOW_API_LOGS:
+                print(f"{Fore.CYAN}[API] 请求 Ollama 本地服务...")
+            
+            response = requests.post(OLLAMA_API_URL, json=payload, timeout=120)
+            
+            if response.status_code != 200:
+                print(f"{Fore.RED}Ollama API Error ({response.status_code}): {response.text}")
+                return ""
+            
+            result = response.json()['message']['content']
+            
+            if SHOW_API_LOGS:
+                print(f"{Fore.GREEN}[API] 响应成功")
+            
+            return result
+        except requests.exceptions.ConnectionError:
+            print(f"{Fore.RED}无法连接到 Ollama 服务，请确保 Ollama 已启动")
+            print(f"{Fore.YELLOW}提示: 使用 'ollama serve' 启动服务")
+            return ""
+        except Exception as e:
+            print(f"{Fore.RED}Ollama 调用异常: {e}")
             return ""
 
     @staticmethod
     def test_connection() -> bool:
-        print(f"{Fore.CYAN}正在测试连接 [siliconflow]...")
+        """测试 LLM 连接"""
+        provider_name = "SiliconFlow" if LLM_PROVIDER == "siliconflow" else "Ollama"
+        model_name = SILICONFLOW_MODEL_NAME if LLM_PROVIDER == "siliconflow" else OLLAMA_MODEL_NAME
+        
+        print(f"{Fore.CYAN}正在测试连接 [{provider_name}] 模型: {model_name}...")
+        
         try:
             res = LLMClient.chat([{"role": "user", "content": "回复OK"}])
             if res:
-                print(f"{Fore.GREEN}✅ 测试通过！")
+                print(f"{Fore.GREEN}✅ 连接测试通过！")
                 return True
-            return False
-        except:
+            else:
+                print(f"{Fore.RED}❌ 连接测试失败：未收到响应")
+                return False
+        except Exception as e:
+            print(f"{Fore.RED}❌ 连接测试失败: {e}")
             return False
 
 
-# --- 核心：案件设计者 (优化 Prompt) ---
+# --- 核心：案件设计者 ---
 class CaseDesigner:
+    """案件设计者 - 负责生成逆转裁判风格的案件"""
+    
     def generate_case(self) -> Dict[str, Any]:
-        print(f"{Fore.CYAN}正在构思案件剧本... (使用 {SILICONFLOW_MODEL_NAME})")
+        """生成一个完整的案件"""
+        model_name = SILICONFLOW_MODEL_NAME if LLM_PROVIDER == "siliconflow" else OLLAMA_MODEL_NAME
+        print(f"{Fore.CYAN}正在构思案件剧本... (使用 {model_name})")
 
         prompt = """
         你是一位悬疑小说家。请设计一个《逆转裁判》风格的法庭案件。
@@ -77,6 +160,7 @@ class CaseDesigner:
         1. 证人必须是真凶。
         2. 证人的"初始证词"必须包含一个明显的谎言，这个谎言与"证物列表"中的某一项直接矛盾（例如时间、地点、物品状态）。
         3. 请确保真凶的名字和死者的名字不要搞混。
+        4. 案件应该有足够的深度和复杂性，包含多个证物和线索。
 
         请以严格的 JSON 格式输出：
         {
@@ -84,14 +168,21 @@ class CaseDesigner:
             "background": "简短背景（死者、时间、死因）",
             "true_killer": "真凶名字",
             "suspect": "被告（无辜者）名字",
+            "victim": "死者名字",
+            "crime_scene": "案发地点详细描述",
+            "time_of_crime": "案发时间",
             "evidence_list": [
                 {"name": "证物名", "description": "证物详细描述（这是律师破案的关键，请写具体点，例如'上面印着xx时间'）"}
+            ],
+            "locations": [
+                {"name": "地点名", "description": "地点描述", "clues": ["可在此发现的线索"]}
             ],
             "witness": {
                 "name": "真凶名字",
                 "personality": "性格（如：傲慢、胆小、阴险）",
                 "secret": "作案手法简述",
-                "initial_testimony": "一段简短的证词（必须包含一个能被证物直接反驳的谎言）"
+                "initial_testimony": "一段简短的证词（必须包含一个能被证物直接反驳的谎言）",
+                "motive": "作案动机"
             }
         }
         直接输出JSON，不要markdown标记。
@@ -101,9 +192,26 @@ class CaseDesigner:
         clean_response = response.replace("```json", "").replace("```", "").strip()
 
         try:
-            return json.loads(clean_response)
-        except:
-            print(f"{Fore.RED}生成失败，重试中...")
+            case_data = json.loads(clean_response)
+            
+            # 验证必要字段
+            required_fields = ["case_title", "background", "true_killer", "suspect", "evidence_list", "witness"]
+            for field in required_fields:
+                if field not in case_data:
+                    print(f"{Fore.YELLOW}警告: 缺少必要字段 {field}，重新生成...")
+                    return self.generate_case()
+            
+            if DEBUG_MODE:
+                print(f"{Fore.GREEN}案件生成成功")
+                
+            return case_data
+        except json.JSONDecodeError as e:
+            print(f"{Fore.RED}JSON 解析失败: {e}")
+            print(f"{Fore.YELLOW}重试中...")
+            return self.generate_case()
+        except Exception as e:
+            print(f"{Fore.RED}生成失败: {e}")
+            print(f"{Fore.YELLOW}重试中...")
             return self.generate_case()
 
 
@@ -247,8 +355,8 @@ class CourtSimulation:
                 witness_breakdown_count += 1
                 wit_msg = f"律师拿出了证据 {presented_evidence} 指出了你的矛盾！检察官虽然帮你说话，但这个证据很强。请试图狡辩，或者编造一个新的理由！(这是你第{witness_breakdown_count}次被拆穿)"
 
-                # 如果被连续指证3次，强制崩溃
-                if witness_breakdown_count >= 3:
+                # 如果被连续指证达到阈值，强制崩溃
+                if witness_breakdown_count >= WITNESS_BREAKDOWN_THRESHOLD:
                     wit_msg += " 你的逻辑已经无法自圆其说了，请表现出彻底崩溃！"
             else:
                 wit_msg = f"律师在追问细节。请坚持你的说法，不要露馅。"
@@ -262,7 +370,7 @@ class CourtSimulation:
             # 4. 法官裁决
             # 只有当律师指证成功，且证人表现出明显崩溃词汇时，法官才判决
             judge_context = f"本回合总结：律师指出矛盾。证人回答：{witness_response}"
-            if witness_breakdown_count >= 3 or ("我承认" in witness_response or "是我做的" in witness_response):
+            if witness_breakdown_count >= WITNESS_BREAKDOWN_THRESHOLD or ("我承认" in witness_response or "是我做的" in witness_response):
                 judge_msg = f"{judge_context}。证人似乎已经承认或彻底崩溃了。请做出最后判决。"
             else:
                 judge_msg = f"{judge_context}。证人还在狡辩。请要求律师继续追问，或者要求证人修正证词。不要宣判无罪。"
