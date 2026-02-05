@@ -50,18 +50,26 @@ class WebCourtGame:
         self.game_over = False
         self.game_result = None
         self.history = []
+        self.game_mode = 'fixed'  # 'fixed' for 3 fixed options, 'free' for free speech
     
-    def start_new_game(self):
-        """开始新游戏"""
+    def start_new_game(self, game_mode='fixed'):
+        """开始新游戏
+        
+        Args:
+            game_mode: 游戏模式 ('fixed' 为固定选项, 'free' 为自由发言)
+        """
         logger.info("=== 开始新游戏 ===")
+        logger.info(f"游戏模式: {game_mode}")
+        self.game_mode = game_mode
+        
         designer = CaseDesigner()
         self.case = designer.generate_case()
         logger.debug(f"案件生成完成: {self.case['case_title']}")
         
-        # 调查阶段收集证物
+        # Web UI 默认跳过调查阶段，直接获取证物
         investigation = InvestigationPhase(self.case)
         self.evidence_list = investigation.collected_evidence
-        logger.debug(f"收集到 {len(self.evidence_list)} 个证物")
+        logger.debug(f"已自动收集 {len(self.evidence_list)} 个证物（跳过调查阶段）")
         
         # 初始化角色
         self.judge = Judge()
@@ -210,7 +218,8 @@ class WebCourtGame:
             'witness_breakdown_count': self.witness_breakdown_count,
             'breakdown_threshold': WITNESS_BREAKDOWN_THRESHOLD,
             'game_over': self.game_over,
-            'game_result': self.game_result
+            'game_result': self.game_result,
+            'game_mode': self.game_mode
         }
 
 
@@ -233,13 +242,16 @@ def test_connection():
 def new_game():
     """开始新游戏"""
     logger.info("收到新游戏请求")
+    data = request.json or {}
+    game_mode = data.get('game_mode', 'fixed')  # 默认为固定选项模式
+    
     session_id = str(uuid.uuid4())
     game = WebCourtGame()
     
     try:
-        state = game.start_new_game()
+        state = game.start_new_game(game_mode)
         game_sessions[session_id] = game
-        logger.info(f"新游戏创建成功 - Session ID: {session_id}")
+        logger.info(f"新游戏创建成功 - Session ID: {session_id}, 模式: {game_mode}")
         logger.debug(f"当前活跃会话数: {len(game_sessions)}")
         
         return jsonify({

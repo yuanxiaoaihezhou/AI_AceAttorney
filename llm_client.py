@@ -3,6 +3,7 @@ LLM Client Module
 提供统一的大语言模型接口，支持多种提供商
 """
 
+import json
 import requests
 import logging
 from typing import List, Dict
@@ -22,6 +23,12 @@ from config import (
     DEBUG_MODE
 )
 
+# Import TEST_MODE if it exists
+try:
+    from config import TEST_MODE
+except ImportError:
+    TEST_MODE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,6 +39,10 @@ class LLMClient:
     def chat(messages: List[Dict[str, str]], json_mode=False) -> str:
         """统一的 LLM 调用接口，支持多种提供商"""
         logger.debug(f"LLM 请求 - 提供商: {LLM_PROVIDER}, JSON模式: {json_mode}, 消息数: {len(messages)}")
+        
+        # Test mode - return mock data
+        if TEST_MODE:
+            return LLMClient._chat_test(messages, json_mode)
         
         if LLM_PROVIDER == "siliconflow":
             return LLMClient._chat_siliconflow(messages, json_mode)
@@ -145,8 +156,66 @@ class LLMClient:
             return ""
 
     @staticmethod
+    def _chat_test(messages: List[Dict[str, str]], json_mode=False) -> str:
+        """测试模式 - 返回模拟数据"""
+        # 获取最后一条消息的内容
+        last_message = messages[-1]["content"] if messages else ""
+        
+        # 如果需要JSON格式
+        if json_mode:
+            # 检查是否是案件生成请求
+            if "案件标题" in last_message or "case_title" in last_message:
+                mock_case = {
+                    "case_title": "测试案件：神秘失踪事件",
+                    "background": "某公司经理李明突然失踪，警方怀疑是其助理王芳所为。",
+                    "true_killer": "张三",
+                    "suspect": "王芳",
+                    "victim": "李明",
+                    "crime_scene": "公司办公室",
+                    "time_of_crime": "晚上10点",
+                    "evidence_list": [
+                        {"name": "办公室钥匙", "description": "在案发现场发现的钥匙，只有证人持有", "location": "案发现场"},
+                        {"name": "监控录像", "description": "显示证人在案发时间进入了受害者办公室", "location": "保安室"},
+                        {"name": "手机通话记录", "description": "证人在案发前给受害者打了多次电话", "location": "警察局"}
+                    ],
+                    "locations": [
+                        {"name": "办公室", "description": "案发现场", "available_items": ["钥匙", "文件"]}
+                    ],
+                    "npcs": [
+                        {"name": "保安", "role": "保安", "location": "保安室", "knows": "看到证人进入办公室"}
+                    ],
+                    "witness": {
+                        "name": "张三",
+                        "personality": "紧张、容易慌乱",
+                        "secret": "其实是我做的，但我要隐瞒",
+                        "initial_testimony": "那天晚上我在办公室加班，没有看到任何异常。",
+                        "motive": "因为工作矛盾"
+                    }
+                }
+                return json.dumps(mock_case, ensure_ascii=False)
+        
+        # 根据角色类型返回不同的模拟回复
+        if "法官" in last_message or "Judge" in last_message:
+            return "请律师继续追问证人，不要放过任何细节。"
+        elif "检察官" in last_message or "Prosecutor" in last_message:
+            return "律师的质疑毫无根据！证人的证词是可信的。"
+        elif "证人" in last_message or "Witness" in last_message:
+            if "指证" in last_message or "证据" in last_message:
+                return "这、这个证据...我可以解释！我那天确实去了办公室，但只是拿忘记的东西！"
+            else:
+                return "我、我说的都是真的！那天晚上我真的在加班！"
+        else:
+            return "收到，我会继续调查。"
+
+    @staticmethod
     def test_connection() -> bool:
         """测试 LLM 连接"""
+        # 测试模式直接返回成功
+        if TEST_MODE:
+            print(f"{Fore.GREEN}✅ 测试模式：跳过真实连接")
+            logger.info("测试模式：LLM 连接跳过")
+            return True
+        
         provider_name = "SiliconFlow" if LLM_PROVIDER == "siliconflow" else "Ollama"
         model_name = SILICONFLOW_MODEL_NAME if LLM_PROVIDER == "siliconflow" else OLLAMA_MODEL_NAME
         
