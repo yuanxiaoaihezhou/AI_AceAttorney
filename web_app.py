@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""
+AI 逆转裁判 Web UI
+基于 Flask 的 Web 界面，玩家扮演律师进行游戏
+"""
+
+import json
+import uuid
+from flask import Flask, render_template, request, jsonify, session
+from flask_cors import CORS
+
+from case_designer import CaseDesigner
+from agents import Judge, Prosecutor, Witness
+from investigation import InvestigationPhase
+from llm_client import LLMClient
+from config import WITNESS_BREAKDOWN_THRESHOLD, MAX_ROUNDS
+
+app = Flask(__name__)
+app.secret_key = str(uuid.uuid4())
+CORS(app)
+
+# 存储游戏状态
+game_sessions = {}
+
+
+class WebCourtGame:
+    """Web 版法庭游戏控制器"""
+    
+    def __init__(self):
+        self.case = None
+        self.judge = None
+        self.prosecutor = None
+        self.witness = None
+        self.evidence_list = []
+        self.current_context = ""
+        self.witness_breakdown_count = 0
+        self.round_num = 0
+        self.game_over = False
+        self.game_result = None
+        self.history = []
+    
+    def start_new_game(self):
+        """开始新游戏"""
+        designer = CaseDesigner()
+        self.case = designer.generate_case()
+        
+        # 调查阶段收集证物
+        investigation = InvestigationPhase(self.case)
+        self.evidence_list = investigation.collected_evidence
+        
+        # 初始化角色
+        self.judge = Judge()
+        self.prosecutor = Prosecutor(self.evidence_list)
+        self.witness = Witness(
+            self.case['witness']['name'],
+            self.case['witness']['personality'],
+            self.case['witness']['secret'],
+            self.case['witness']['initial_testimony']
+        )
+        
+        self.current_context = self.case['witness']['initial_testimony']
+        self.witness_breakdown_count = 0
+        self.round_num = 0
+        self.game_over = False
+        self.game_result = None
+        
+        # 添加开庭信息到历史
+        self.history.append({
+            'type': 'judge',
+            'speaker': '法官',
+            'text': f"开庭。证人 {self.case['witness']['name']}，请入庭并作证。"
+        })
+        
+        self.history.append({
+            'type': 'witness',
+            'speaker': f"证人 {self.case['witness']['name']}",
+            'text': self.current_context
+        })
+        
+        return self.get_game_state()
+    
+    def player_action(self, action_type, evidence_name=None, question=None):
+        """玩家行动（威慑或指证）"""
+        if self.game_over:
+            return {'error': '游戏已结束'}
+        
+        if self.round_num >= MAX_ROUNDS:
+            self.game_over = True
+            self.game_result = 'timeout'
+            return self.get_game_state()
+        
+        self.round_num += 1
+        
+        # 玩家行动
+        if action_type == 'press':
+            lawyer_text = f"【威慑】{question if question else '请说清楚，这里有矛盾！'}"
+            action_desc = "威慑"
+            presented_evidence = "无"
+        elif action_type == 'present':
+            lawyer_text = f"【指证：{evidence_name}】这个证物证明了证人说谎！"
+            action_desc = "指证"
+            presented_evidence = evidence_name
+        else:
+            return {'error': '无效的行动类型'}
+        
+        self.history.append({
+            'type': 'player',
+            'speaker': '律师（您）',
+            'text': lawyer_text
+        })
+        
+        # 检察官反驳
+        pros_msg = f"律师刚刚进行了{action_desc}，并说了：{lawyer_text}。请帮证人解围，反驳律师！"
+        pros_response = self.prosecutor.speak(pros_msg)
+        
+        self.history.append({
+            'type': 'prosecutor',
+            'speaker': '检察官',
+            'text': pros_response
+        })
+        
+        # 证人反应
+        if action_type == 'present':
+            self.witness_breakdown_count += 1
+            wit_msg = f"律师拿出了证据 {presented_evidence} 指出了你的矛盾！检察官虽然帮你说话，但这个证据很强。请试图狡辩，或者编造一个新的理由！(这是你第{self.witness_breakdown_count}次被拆穿)"
+            
+            if self.witness_breakdown_count >= WITNESS_BREAKDOWN_THRESHOLD:
+                wit_msg += " 你的逻辑已经无法自圆其说了，请表现出彻底崩溃！"
+        else:
+            wit_msg = f"律师在追问细节。请坚持你的说法，不要露馅。"
+        
+        witness_response = self.witness.speak(wit_msg)
+        self.current_context = witness_response
+        
+        self.history.append({
+            'type': 'witness',
+            'speaker': f"证人 {self.case['witness']['name']}",
+            'text': witness_response
+        })
+        
+        # 法官裁决
+        judge_context = f"本回合总结：律师指出矛盾。证人回答：{witness_response}"
+        if self.witness_breakdown_count >= WITNESS_BREAKDOWN_THRESHOLD or ("我承认" in witness_response or "是我做的" in witness_response):
+            judge_msg = f"{judge_context}。证人似乎已经承认或彻底崩溃了。请做出最后判决。"
+        else:
+            judge_msg = f"{judge_context}。证人还在狡辩。请要求律师继续追问，或者要求证人修正证词。不要宣判无罪。"
+        
+        judge_response = self.judge.speak(judge_msg)
+        
+        self.history.append({
+            'type': 'judge',
+            'speaker': '法官',
+            'text': judge_response
+        })
+        
+        # 检查游戏是否结束
+        if "无罪" in judge_response:
+            self.game_over = True
+            self.game_result = 'win'
+        
+        return self.get_game_state()
+    
+    def get_game_state(self):
+        """获取当前游戏状态"""
+        return {
+            'case': {
+                'title': self.case['case_title'],
+                'background': self.case['background'],
+                'suspect': self.case['suspect'],
+                'victim': self.case.get('victim', '未知'),
+                'witness_name': self.case['witness']['name']
+            },
+            'evidence': self.evidence_list,
+            'history': self.history,
+            'current_context': self.current_context,
+            'round_num': self.round_num,
+            'max_rounds': MAX_ROUNDS,
+            'witness_breakdown_count': self.witness_breakdown_count,
+            'breakdown_threshold': WITNESS_BREAKDOWN_THRESHOLD,
+            'game_over': self.game_over,
+            'game_result': self.game_result
+        }
+
+
+@app.route('/')
+def index():
+    """首页"""
+    return render_template('index.html')
+
+
+@app.route('/api/test_connection', methods=['GET'])
+def test_connection():
+    """测试 LLM 连接"""
+    result = LLMClient.test_connection()
+    return jsonify({'success': result})
+
+
+@app.route('/api/new_game', methods=['POST'])
+def new_game():
+    """开始新游戏"""
+    session_id = str(uuid.uuid4())
+    game = WebCourtGame()
+    
+    try:
+        state = game.start_new_game()
+        game_sessions[session_id] = game
+        
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'state': state
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/action', methods=['POST'])
+def player_action():
+    """玩家行动"""
+    data = request.json
+    session_id = data.get('session_id')
+    action_type = data.get('action_type')
+    evidence_name = data.get('evidence_name')
+    question = data.get('question')
+    
+    if session_id not in game_sessions:
+        return jsonify({'success': False, 'error': '游戏会话不存在'}), 404
+    
+    game = game_sessions[session_id]
+    
+    try:
+        state = game.player_action(action_type, evidence_name, question)
+        return jsonify({
+            'success': True,
+            'state': state
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/game_state', methods=['GET'])
+def get_game_state():
+    """获取游戏状态"""
+    session_id = request.args.get('session_id')
+    
+    if session_id not in game_sessions:
+        return jsonify({'success': False, 'error': '游戏会话不存在'}), 404
+    
+    game = game_sessions[session_id]
+    return jsonify({
+        'success': True,
+        'state': game.get_game_state()
+    })
+
+
+def main():
+    """启动 Web 服务器"""
+    print("=" * 50)
+    print("AI 逆转裁判 Web 版")
+    print("=" * 50)
+    print("\n正在启动服务器...")
+    print("访问地址: http://localhost:5000")
+    print("按 Ctrl+C 停止服务器\n")
+    
+    # 测试 LLM 连接
+    if LLMClient.test_connection():
+        print("✓ LLM 连接正常\n")
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    else:
+        print("✗ LLM 连接失败，请检查配置")
+        print("提示：")
+        print("  - 如果使用 Ollama，请确保服务已启动: ollama serve")
+        print("  - 如果使用 SiliconFlow，请检查 API Key 是否正确")
+
+
+if __name__ == '__main__':
+    main()

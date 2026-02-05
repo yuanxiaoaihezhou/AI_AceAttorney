@@ -1,0 +1,577 @@
+/* 
+ * AI 逆转裁判 - 样式表
+ * 移动优先，响应式设计
+ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+    --primary-blue: #0066cc;
+    --primary-red: #cc0000;
+    --judge-brown: #8B4513;
+    --witness-cyan: #00cccc;
+    --lawyer-blue: #0066ff;
+    --prosecutor-red: #cc0033;
+    --bg-court: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    --text-light: #ffffff;
+    --text-dark: #333333;
+    --panel-bg: rgba(255, 255, 255, 0.95);
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-heavy: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+body {
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg-court);
+    color: var(--text-light);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 加载屏幕 */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-court);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.logo {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid var(--text-light);
+    border-radius: 50%;
+    margin: 2rem auto;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+/* 开始屏幕 */
+.start-content {
+    text-align: center;
+    padding: 2rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.logo-large {
+    font-size: 6rem;
+    margin-bottom: 1rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.game-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    opacity: 0.8;
+    margin-bottom: 2rem;
+}
+
+.connection-status {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+/* 游戏屏幕 */
+#game-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh; /* 移动端动态视口高度 */
+}
+
+/* 状态栏 */
+.status-bar {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 0.75rem 1rem;
+    box-shadow: var(--shadow);
+    flex-shrink: 0;
+}
+
+.case-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.case-title {
+    font-size: 1rem;
+    font-weight: bold;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.round-info {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+}
+
+/* 对话容器 */
+.dialogue-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.dialogue-box {
+    background: var(--panel-bg);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+    color: var(--text-dark);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dialogue-speaker {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dialogue-text {
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* 角色颜色 */
+.dialogue-box.judge .dialogue-speaker {
+    color: var(--judge-brown);
+}
+
+.dialogue-box.witness .dialogue-speaker {
+    color: var(--witness-cyan);
+}
+
+.dialogue-box.player .dialogue-speaker {
+    color: var(--lawyer-blue);
+}
+
+.dialogue-box.prosecutor .dialogue-speaker {
+    color: var(--prosecutor-red);
+}
+
+/* 控制面板 */
+.control-panel {
+    background: rgba(0, 0, 0, 0.9);
+    padding: 1rem;
+    box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+
+/* 按钮样式 */
+.btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow);
+    touch-action: manipulation;
+}
+
+.btn:active {
+    transform: scale(0.95);
+}
+
+.btn-primary {
+    background: var(--primary-blue);
+    color: var(--text-light);
+}
+
+.btn-primary:hover {
+    background: #0055aa;
+}
+
+.btn-secondary {
+    background: #666;
+    color: var(--text-light);
+}
+
+.btn-secondary:hover {
+    background: #555;
+}
+
+.btn-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 1rem 0.5rem;
+    min-height: 80px;
+}
+
+.btn-icon {
+    font-size: 1.5rem;
+}
+
+.btn-text {
+    font-size: 0.9rem;
+}
+
+.btn-press {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+}
+
+.btn-present {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #fbc531 0%, #f39c12 100%);
+    color: white;
+}
+
+.btn-large {
+    padding: 1.25rem 2rem;
+    font-size: 1.2rem;
+}
+
+.btn-block {
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+/* 证物面板 */
+.evidence-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--panel-bg);
+    color: var(--text-dark);
+    max-height: 60vh;
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--shadow-heavy);
+    animation: slideUp 0.3s ease-out;
+    z-index: 1000;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 2px solid #ddd;
+}
+
+.evidence-list {
+    padding: 1rem;
+    max-height: calc(60vh - 60px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.evidence-item {
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.evidence-item:active {
+    transform: scale(0.98);
+    background: #f0f0f0;
+}
+
+.evidence-name {
+    font-weight: bold;
+    color: var(--primary-blue);
+    margin-bottom: 0.5rem;
+}
+
+.evidence-desc {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.4;
+}
+
+/* 模态框 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal.show {
+    display: flex;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: var(--panel-bg);
+    color: var(--text-dark);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: var(--shadow-heavy);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-small {
+    max-width: 400px;
+}
+
+.modal-result {
+    text-align: center;
+    padding: 2rem;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 2px solid #ddd;
+    background: #f5f5f5;
+}
+
+.modal-header h2 {
+    margin: 0;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    max-height: calc(80vh - 70px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    color: #000;
+}
+
+/* 案情信息 */
+.case-detail {
+    margin-bottom: 1.5rem;
+}
+
+.case-detail h3 {
+    color: var(--primary-blue);
+    margin-bottom: 0.5rem;
+}
+
+.case-detail p {
+    line-height: 1.6;
+    color: #333;
+}
+
+/* 威慑选项 */
+.press-options {
+    margin-top: 1rem;
+}
+
+/* 结果样式 */
+.result-icon {
+    font-size: 5rem;
+    margin-bottom: 1rem;
+}
+
+.result-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.result-message {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+.result-win {
+    color: #27ae60;
+}
+
+.result-lose {
+    color: #e74c3c;
+}
+
+/* 响应式设计 */
+@media (min-width: 768px) {
+    .game-title {
+        font-size: 3rem;
+    }
+    
+    .action-buttons {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    .dialogue-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .case-title {
+        font-size: 0.9rem;
+    }
+    
+    .round-info {
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.75rem;
+    }
+    
+    .btn-action {
+        min-height: 70px;
+        padding: 0.75rem 0.25rem;
+    }
+    
+    .btn-icon {
+        font-size: 1.25rem;
+    }
+    
+    .btn-text {
+        font-size: 0.8rem;
+    }
+}
+
+/* 隐藏滚动条但保持滚动功能 */
+.dialogue-container::-webkit-scrollbar,
+.evidence-list::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dialogue-container::-webkit-scrollbar-thumb,
+.evidence-list::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+/* 触摸反馈 */
+button, .evidence-item {
+    -webkit-user-select: none;
+    user-select: none;
+}
