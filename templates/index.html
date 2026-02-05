@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 逆转裁判 - 法庭辩论</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- 加载屏幕 -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="logo">⚖️</div>
+            <h1>AI 逆转裁判</h1>
+            <p>正在连接 AI 系统...</p>
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <!-- 开始屏幕 -->
+    <div id="start-screen" class="screen" style="display: none;">
+        <div class="start-content">
+            <div class="logo-large">⚖️</div>
+            <h1 class="game-title">AI 逆转裁判</h1>
+            <p class="subtitle">AI Ace Attorney</p>
+            <button id="start-btn" class="btn btn-primary btn-large">开始新案件</button>
+            <div class="connection-status" id="connection-status"></div>
+        </div>
+    </div>
+
+    <!-- 游戏屏幕 -->
+    <div id="game-screen" class="screen" style="display: none;">
+        <!-- 顶部状态栏 -->
+        <div class="status-bar">
+            <div class="case-info">
+                <div class="case-title" id="case-title">案件加载中...</div>
+                <div class="round-info">
+                    <span id="round-counter">回合: 0/10</span>
+                    <span id="pressure-meter">压力: ★☆☆☆☆</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话历史区域 -->
+        <div class="dialogue-container" id="dialogue-container">
+            <!-- 对话内容将动态添加 -->
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <!-- 证物栏 -->
+            <div class="evidence-panel" id="evidence-panel" style="display: none;">
+                <div class="panel-header">
+                    <h3>证物列表</h3>
+                    <button class="close-btn" onclick="closeEvidencePanel()">✕</button>
+                </div>
+                <div class="evidence-list" id="evidence-list">
+                    <!-- 证物将动态添加 -->
+                </div>
+            </div>
+
+            <!-- 主控制按钮 -->
+            <div class="action-buttons">
+                <button class="btn btn-action btn-press" onclick="showPressDialog()">
+                    <span class="btn-icon">💬</span>
+                    <span class="btn-text">威慑</span>
+                </button>
+                <button class="btn btn-action btn-present" onclick="openEvidencePanel()">
+                    <span class="btn-icon">📋</span>
+                    <span class="btn-text">指证</span>
+                </button>
+                <button class="btn btn-action btn-info" onclick="showCaseInfo()">
+                    <span class="btn-icon">ℹ️</span>
+                    <span class="btn-text">案情</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 案情信息弹窗 -->
+    <div id="case-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>案件信息</h2>
+                <button class="close-btn" onclick="closeCaseInfo()">✕</button>
+            </div>
+            <div class="modal-body" id="case-info-content">
+                <!-- 案情将动态填充 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 威慑对话框 -->
+    <div id="press-modal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>威慑追问</h2>
+                <button class="close-btn" onclick="closePressDialog()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>选择追问方式：</p>
+                <div class="press-options">
+                    <button class="btn btn-secondary btn-block" onclick="performPress('你这话有问题！说清楚！')">
+                        质疑证词
+                    </button>
+                    <button class="btn btn-secondary btn-block" onclick="performPress('请说明更多细节！')">
+                        要求细节
+                    </button>
+                    <button class="btn btn-secondary btn-block" onclick="performPress('这里有矛盾！')">
+                        指出矛盾
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏结束弹窗 -->
+    <div id="result-modal" class="modal">
+        <div class="modal-content modal-result">
+            <div class="modal-body">
+                <div id="result-content">
+                    <!-- 结果将动态填充 -->
+                </div>
+                <button class="btn btn-primary btn-large" onclick="location.reload()">
+                    返回首页
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>

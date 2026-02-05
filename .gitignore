@@ -39,5 +39,11 @@ Thumbs.db
 # Logs
 *.log
 
+# Flask
+instance/
+.webassets-cache
+*.db
+*.sqlite
+
 # Local configuration (if users want to override)
 config.local.py
