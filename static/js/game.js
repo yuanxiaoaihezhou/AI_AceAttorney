@@ -92,8 +92,11 @@ async function startNewGame() {
     document.getElementById('back-to-start-btn').disabled = true;
     
     // 显示加载提示
-    const originalHtml = document.querySelector('.game-title').textContent;
-    document.querySelector('.game-title').textContent = '正在生成案件...';
+    const titleElement = document.querySelector('.game-title');
+    const originalHtml = titleElement ? titleElement.textContent : '选择游戏模式';
+    if (titleElement) {
+        titleElement.textContent = '正在生成案件...';
+    }
     
     try {
         const response = await fetch('/api/new_game', {
@@ -115,14 +118,20 @@ async function startNewGame() {
             showScreen('game-screen');
         } else {
             alert('生成案件失败: ' + (data.error || '未知错误'));
-            document.querySelector('.game-title').textContent = originalHtml;
+            const titleElement = document.querySelector('.game-title');
+            if (titleElement) {
+                titleElement.textContent = originalHtml;
+            }
             document.getElementById('mode-fixed-btn').disabled = false;
             document.getElementById('mode-free-btn').disabled = false;
             document.getElementById('back-to-start-btn').disabled = false;
         }
     } catch (error) {
         alert('网络错误: ' + error.message);
-        document.querySelector('.game-title').textContent = originalHtml;
+        const titleElement = document.querySelector('.game-title');
+        if (titleElement) {
+            titleElement.textContent = originalHtml;
+        }
         document.getElementById('mode-fixed-btn').disabled = false;
         document.getElementById('mode-free-btn').disabled = false;
         document.getElementById('back-to-start-btn').disabled = false;
@@ -244,12 +253,18 @@ function showPressDialog() {
         // 自由发言模式：隐藏固定选项，只显示自定义输入
         fixedOptions.style.display = 'none';
         customSection.style.marginTop = '0';
-        customSection.querySelector('p').textContent = '输入你想说的话：';
+        const customLabel = customSection.querySelector('p');
+        if (customLabel) {
+            customLabel.textContent = '输入你想说的话：';
+        }
     } else {
         // 固定选项模式：显示3个固定选项和自定义输入
         fixedOptions.style.display = 'block';
         customSection.style.marginTop = '1rem';
-        customSection.querySelector('p').textContent = '或者输入自定义内容：';
+        const customLabel = customSection.querySelector('p');
+        if (customLabel) {
+            customLabel.textContent = '或者输入自定义内容：';
+        }
     }
     
     modal.classList.add('show');

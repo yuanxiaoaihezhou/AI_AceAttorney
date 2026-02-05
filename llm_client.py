@@ -3,6 +3,7 @@ LLM Client Module
 提供统一的大语言模型接口，支持多种提供商
 """
 
+import json
 import requests
 import logging
 from typing import List, Dict
@@ -157,8 +158,6 @@ class LLMClient:
     @staticmethod
     def _chat_test(messages: List[Dict[str, str]], json_mode=False) -> str:
         """测试模式 - 返回模拟数据"""
-        import json
-        
         # 获取最后一条消息的内容
         last_message = messages[-1]["content"] if messages else ""
         
