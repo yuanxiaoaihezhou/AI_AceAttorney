@@ -26,5 +26,5 @@ JSON_TEMPERATURE = 0.7  # 生成 JSON 时的温度
 MAX_TOKENS = 1024  # 最大生成 token 数
 
 # --- 调试配置 ---
-DEBUG_MODE = False  # 开启后会显示更多调试信息
-SHOW_API_LOGS = False  # 是否显示 API 调用日志
+DEBUG_MODE = True  # 开启后会显示更多调试信息
+SHOW_API_LOGS = True  # 是否显示 API 调用日志
