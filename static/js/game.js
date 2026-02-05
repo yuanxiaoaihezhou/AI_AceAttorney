@@ -4,6 +4,7 @@
 
 let sessionId = null;
 let gameState = null;
+let selectedMode = 'fixed'; // 默认为固定选项模式
 
 // HTML 转义函数，防止 XSS
 function escapeHtml(text) {
@@ -61,16 +62,48 @@ function showScreen(screenId) {
 }
 
 // 开始新游戏
-document.getElementById('start-btn').addEventListener('click', async function() {
-    this.disabled = true;
-    this.innerHTML = '正在生成案件...';
+document.getElementById('start-btn').addEventListener('click', function() {
+    // 显示模式选择屏幕
+    showScreen('mode-screen');
+});
+
+// 返回开始屏幕
+document.getElementById('back-to-start-btn').addEventListener('click', function() {
+    showScreen('start-screen');
+});
+
+// 选择固定选项模式
+document.getElementById('mode-fixed-btn').addEventListener('click', async function() {
+    selectedMode = 'fixed';
+    await startNewGame();
+});
+
+// 选择自由发言模式
+document.getElementById('mode-free-btn').addEventListener('click', async function() {
+    selectedMode = 'free';
+    await startNewGame();
+});
+
+// 开始新游戏的实际逻辑
+async function startNewGame() {
+    // 禁用所有模式按钮
+    document.getElementById('mode-fixed-btn').disabled = true;
+    document.getElementById('mode-free-btn').disabled = true;
+    document.getElementById('back-to-start-btn').disabled = true;
+    
+    // 显示加载提示
+    const originalHtml = document.querySelector('.game-title').textContent;
+    document.querySelector('.game-title').textContent = '正在生成案件...';
     
     try {
         const response = await fetch('/api/new_game', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                game_mode: selectedMode
+            })
         });
         
         const data = await response.json();
@@ -82,15 +115,19 @@ document.getElementById('start-btn').addEventListener('click', async function() 
             showScreen('game-screen');
         } else {
             alert('生成案件失败: ' + (data.error || '未知错误'));
-            this.disabled = false;
-            this.innerHTML = '开始新案件';
+            document.querySelector('.game-title').textContent = originalHtml;
+            document.getElementById('mode-fixed-btn').disabled = false;
+            document.getElementById('mode-free-btn').disabled = false;
+            document.getElementById('back-to-start-btn').disabled = false;
         }
     } catch (error) {
         alert('网络错误: ' + error.message);
-        this.disabled = false;
-        this.innerHTML = '开始新案件';
+        document.querySelector('.game-title').textContent = originalHtml;
+        document.getElementById('mode-fixed-btn').disabled = false;
+        document.getElementById('mode-free-btn').disabled = false;
+        document.getElementById('back-to-start-btn').disabled = false;
     }
-});
+}
 
 // 初始化游戏界面
 function initializeGame() {
@@ -198,7 +235,24 @@ function showPressDialog() {
         return;
     }
     
-    document.getElementById('press-modal').classList.add('show');
+    const modal = document.getElementById('press-modal');
+    const fixedOptions = document.querySelector('.press-options');
+    const customSection = document.querySelector('.custom-input-section');
+    
+    // 根据游戏模式显示不同的选项
+    if (gameState.game_mode === 'free') {
+        // 自由发言模式：隐藏固定选项，只显示自定义输入
+        fixedOptions.style.display = 'none';
+        customSection.style.marginTop = '0';
+        customSection.querySelector('p').textContent = '输入你想说的话：';
+    } else {
+        // 固定选项模式：显示3个固定选项和自定义输入
+        fixedOptions.style.display = 'block';
+        customSection.style.marginTop = '1rem';
+        customSection.querySelector('p').textContent = '或者输入自定义内容：';
+    }
+    
+    modal.classList.add('show');
 }
 
 function closePressDialog() {
