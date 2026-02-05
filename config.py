@@ -28,3 +28,4 @@ MAX_TOKENS = 1024  # 最大生成 token 数
 # --- 调试配置 ---
 DEBUG_MODE = True  # 开启后会显示更多调试信息
 SHOW_API_LOGS = True  # 是否显示 API 调用日志
+TEST_MODE = False  # 测试模式，使用模拟数据而不调用真实LLM (仅用于UI测试)
