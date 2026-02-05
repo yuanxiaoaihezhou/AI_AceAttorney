@@ -5,6 +5,13 @@
 let sessionId = null;
 let gameState = null;
 
+// HTML 转义函数，防止 XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     checkConnection();
@@ -114,11 +121,18 @@ function addDialogue(speaker, text, type) {
     const box = document.createElement('div');
     box.className = `dialogue-box ${type}`;
     
-    box.innerHTML = `
-        <div class="dialogue-speaker">${getSpeakerIcon(type)} ${speaker}</div>
-        <div class="dialogue-text">${text}</div>
-    `;
+    // 创建 speaker 元素
+    const speakerDiv = document.createElement('div');
+    speakerDiv.className = 'dialogue-speaker';
+    speakerDiv.textContent = `${getSpeakerIcon(type)} ${speaker}`;
     
+    // 创建 text 元素
+    const textDiv = document.createElement('div');
+    textDiv.className = 'dialogue-text';
+    textDiv.textContent = text;
+    
+    box.appendChild(speakerDiv);
+    box.appendChild(textDiv);
     container.appendChild(box);
 }
 
@@ -150,7 +164,11 @@ function loadEvidence() {
     list.innerHTML = '';
     
     if (!gameState.evidence || gameState.evidence.length === 0) {
-        list.innerHTML = '<p style="text-align: center; color: #999;">暂无证物</p>';
+        const emptyMsg = document.createElement('p');
+        emptyMsg.style.textAlign = 'center';
+        emptyMsg.style.color = '#999';
+        emptyMsg.textContent = '暂无证物';
+        list.appendChild(emptyMsg);
         return;
     }
     
@@ -159,11 +177,16 @@ function loadEvidence() {
         item.className = 'evidence-item';
         item.onclick = () => presentEvidence(evidence.name);
         
-        item.innerHTML = `
-            <div class="evidence-name">${evidence.name}</div>
-            <div class="evidence-desc">${evidence.description}</div>
-        `;
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'evidence-name';
+        nameDiv.textContent = evidence.name;
         
+        const descDiv = document.createElement('div');
+        descDiv.className = 'evidence-desc';
+        descDiv.textContent = evidence.description;
+        
+        item.appendChild(nameDiv);
+        item.appendChild(descDiv);
         list.appendChild(item);
     });
 }
@@ -308,38 +331,93 @@ function showCaseInfo() {
     const modal = document.getElementById('case-modal');
     const content = document.getElementById('case-info-content');
     
-    content.innerHTML = `
-        <div class="case-detail">
-            <h3>案件名称</h3>
-            <p>${gameState.case.title}</p>
-        </div>
-        <div class="case-detail">
-            <h3>案件背景</h3>
-            <p>${gameState.case.background}</p>
-        </div>
-        <div class="case-detail">
-            <h3>被告</h3>
-            <p>${gameState.case.suspect}</p>
-        </div>
-        <div class="case-detail">
-            <h3>受害者</h3>
-            <p>${gameState.case.victim}</p>
-        </div>
-        <div class="case-detail">
-            <h3>证人</h3>
-            <p>${gameState.case.witness_name}</p>
-        </div>
-        <div class="case-detail">
-            <h3>证物清单</h3>
-            ${gameState.evidence.map(e => `
-                <div style="margin-bottom: 0.75rem; padding: 0.5rem; background: #f5f5f5; border-radius: 6px;">
-                    <strong>${e.name}</strong><br>
-                    <span style="font-size: 0.9rem; color: #666;">${e.description}</span>
-                </div>
-            `).join('')}
-        </div>
-    `;
+    // 清空内容
+    content.innerHTML = '';
     
+    // 创建案件名称部分
+    const titleSection = document.createElement('div');
+    titleSection.className = 'case-detail';
+    const titleH3 = document.createElement('h3');
+    titleH3.textContent = '案件名称';
+    const titleP = document.createElement('p');
+    titleP.textContent = gameState.case.title;
+    titleSection.appendChild(titleH3);
+    titleSection.appendChild(titleP);
+    content.appendChild(titleSection);
+    
+    // 创建案件背景部分
+    const bgSection = document.createElement('div');
+    bgSection.className = 'case-detail';
+    const bgH3 = document.createElement('h3');
+    bgH3.textContent = '案件背景';
+    const bgP = document.createElement('p');
+    bgP.textContent = gameState.case.background;
+    bgSection.appendChild(bgH3);
+    bgSection.appendChild(bgP);
+    content.appendChild(bgSection);
+    
+    // 创建被告部分
+    const suspectSection = document.createElement('div');
+    suspectSection.className = 'case-detail';
+    const suspectH3 = document.createElement('h3');
+    suspectH3.textContent = '被告';
+    const suspectP = document.createElement('p');
+    suspectP.textContent = gameState.case.suspect;
+    suspectSection.appendChild(suspectH3);
+    suspectSection.appendChild(suspectP);
+    content.appendChild(suspectSection);
+    
+    // 创建受害者部分
+    const victimSection = document.createElement('div');
+    victimSection.className = 'case-detail';
+    const victimH3 = document.createElement('h3');
+    victimH3.textContent = '受害者';
+    const victimP = document.createElement('p');
+    victimP.textContent = gameState.case.victim;
+    victimSection.appendChild(victimH3);
+    victimSection.appendChild(victimP);
+    content.appendChild(victimSection);
+    
+    // 创建证人部分
+    const witnessSection = document.createElement('div');
+    witnessSection.className = 'case-detail';
+    const witnessH3 = document.createElement('h3');
+    witnessH3.textContent = '证人';
+    const witnessP = document.createElement('p');
+    witnessP.textContent = gameState.case.witness_name;
+    witnessSection.appendChild(witnessH3);
+    witnessSection.appendChild(witnessP);
+    content.appendChild(witnessSection);
+    
+    // 创建证物清单部分
+    const evidenceSection = document.createElement('div');
+    evidenceSection.className = 'case-detail';
+    const evidenceH3 = document.createElement('h3');
+    evidenceH3.textContent = '证物清单';
+    evidenceSection.appendChild(evidenceH3);
+    
+    gameState.evidence.forEach(e => {
+        const evidenceItem = document.createElement('div');
+        evidenceItem.style.marginBottom = '0.75rem';
+        evidenceItem.style.padding = '0.5rem';
+        evidenceItem.style.background = '#f5f5f5';
+        evidenceItem.style.borderRadius = '6px';
+        
+        const evidenceName = document.createElement('strong');
+        evidenceName.textContent = e.name;
+        evidenceItem.appendChild(evidenceName);
+        evidenceItem.appendChild(document.createElement('br'));
+        
+        const evidenceDesc = document.createElement('span');
+        evidenceDesc.style.fontSize = '0.9rem';
+        evidenceDesc.style.color = '#666';
+        evidenceDesc.textContent = e.description;
+        evidenceItem.appendChild(evidenceDesc);
+        
+        evidenceSection.appendChild(evidenceItem);
+    });
+    
+    content.appendChild(evidenceSection);
     modal.classList.add('show');
 }
 

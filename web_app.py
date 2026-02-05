@@ -6,6 +6,7 @@ AI 逆转裁判 Web UI
 
 import json
 import uuid
+import os
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 
@@ -16,10 +17,13 @@ from llm_client import LLMClient
 from config import WITNESS_BREAKDOWN_THRESHOLD, MAX_ROUNDS
 
 app = Flask(__name__)
-app.secret_key = str(uuid.uuid4())
+app.secret_key = os.environ.get('SECRET_KEY', str(uuid.uuid4()))
 CORS(app)
 
 # 存储游戏状态
+# 注意：当前使用内存存储，服务器重启后数据会丢失
+# 生产环境建议使用 Redis 或数据库进行持久化存储
+# TODO: 实现会话清理机制，移除超过 1 小时未活动的游戏会话
 game_sessions = {}
 
 
@@ -278,7 +282,9 @@ def main():
         print("  - 如果使用 SiliconFlow，请检查 API Key 是否正确")
         print("\n服务器将启动，但游戏功能将无法使用。\n")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # 从环境变量读取 debug 设置，默认为 False
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
 
 
 if __name__ == '__main__':
