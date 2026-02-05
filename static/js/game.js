@@ -211,6 +211,21 @@ async function performPress(question) {
     await performAction('press', null, question);
 }
 
+// 执行自定义威慑
+async function performCustomPress() {
+    const input = document.getElementById('custom-press-input');
+    const customText = input.value.trim();
+    
+    if (!customText) {
+        alert('请输入内容！');
+        return;
+    }
+    
+    closePressDialog();
+    input.value = ''; // 清空输入框
+    await performAction('press', null, customText);
+}
+
 // 打开证物面板
 function openEvidencePanel() {
     if (gameState.game_over) {
