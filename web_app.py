@@ -271,12 +271,14 @@ def main():
     # 测试 LLM 连接
     if LLMClient.test_connection():
         print("✓ LLM 连接正常\n")
-        app.run(host='0.0.0.0', port=5000, debug=True)
     else:
-        print("✗ LLM 连接失败，请检查配置")
+        print("✗ LLM 连接失败")
         print("提示：")
         print("  - 如果使用 Ollama，请确保服务已启动: ollama serve")
         print("  - 如果使用 SiliconFlow，请检查 API Key 是否正确")
+        print("\n服务器将启动，但游戏功能将无法使用。\n")
+    
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 
 if __name__ == '__main__':
